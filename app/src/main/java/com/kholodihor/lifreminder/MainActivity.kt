@@ -29,8 +29,11 @@ import androidx.room.Room
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.core.view.WindowCompat
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+
 
 class MainActivity : ComponentActivity() {
 
@@ -71,6 +74,13 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 ReminderScreen(dao)
             }
+
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+
+            val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+            insetsController.isAppearanceLightStatusBars = true  // темний текст статусбару
+            insetsController.isAppearanceLightNavigationBars = true // темні іконки навігації
+
         }
     }
 
@@ -92,133 +102,152 @@ class MainActivity : ComponentActivity() {
         val darkGreen = Color(0xFF116530)   // #116530
         val textGreen = Color(0xFF18A558)   // #18a558
 
-        Column(
+        Box(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        )  {
-            // Заголовок
-            Text(
-                text = "Life Reminder",
-                style = MaterialTheme.typography.headlineMedium,
-                color = darkGreen,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            OutlinedTextField(
-                value = message,
-                onValueChange = { message = it },
-                label = { Text("Exercise Name") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = primaryGreen,
-                    unfocusedBorderColor = primaryGreen.copy(alpha = 0.5f),
-                    cursorColor = darkGreen,
-                    focusedLabelColor = darkGreen,
-                    unfocusedLabelColor = darkGreen.copy(alpha = 0.7f),
-                    focusedTextColor = textGreen,
-                    unfocusedTextColor = textGreen
-                )
-            )
-
-            Box(
+                .fillMaxSize()
+                .background(Color.White)
+                .windowInsetsPadding(WindowInsets.statusBars) // ✅ падінг від статусбару
+        ) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        activity?.let {
-                            showTimePickerDialog(it) { selectedTime ->
-                                time = selectedTime
-                                confirmed = false
-                            }
-                        }
-                    }
+                    .padding(16.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedTextField(
-                    value = time,
-                    onValueChange = {},
-                    label = { Text("Reminder Time") },
-                    readOnly = true,
-                    enabled = false,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledBorderColor = primaryGreen,
-                        disabledTextColor = textGreen,
-                        disabledLabelColor = darkGreen,
-                        disabledPlaceholderColor = darkGreen
-                    )
-                )
-            }
-
-            Button(
-                onClick = {
-                    val parts = time.split(":")
-                    val hour = parts.getOrNull(0)?.toIntOrNull()
-                    val minute = parts.getOrNull(1)?.toIntOrNull()
-
-                    if (hour != null && minute != null) {
-                        val reminderMessage = if (message.isBlank()) "Time to exercise!" else message
-
-                        coroutineScope.launch {
-                            val reminder = ReminderEntity(
-                                id = 0,
-                                message = reminderMessage,
-                                time = time
-                            )
-
-                            val insertedId = dao.insertReminder(reminder).toInt()
-                            scheduleReminder(context, reminderMessage, hour, minute, insertedId)
-                            confirmed = true
-                        }
-                    }
-                },
-                enabled = time.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = primaryGreen,
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Set Reminder")
-            }
-
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "Your Reminders:",
-                style = MaterialTheme.typography.titleMedium,
-                color = darkGreen
-            )
-
-            reminders.forEach { reminder ->
-                Row(
+                // ✅ Хедер
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.White, shape = RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .background(primaryGreen)
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text("${reminder.time} - ${reminder.message}", color = textGreen)
+                    Text(
+                        text = "Life Reminder",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White
+                    )
+                }
 
-                    IconButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                dao.deleteReminder(reminder)
-                                cancelScheduledReminder(context, reminder.id)
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    label = { Text("Exercise Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = primaryGreen,
+                        unfocusedBorderColor = primaryGreen.copy(alpha = 0.5f),
+                        cursorColor = darkGreen,
+                        focusedLabelColor = darkGreen,
+                        unfocusedLabelColor = darkGreen.copy(alpha = 0.7f),
+                        focusedTextColor = textGreen,
+                        unfocusedTextColor = textGreen
+                    )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            activity?.let {
+                                showTimePickerDialog(it) { selectedTime ->
+                                    time = selectedTime
+                                    confirmed = false
+                                }
                             }
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete Reminder",
-                            tint = Color(0xFFD32F2F) // Red for delete
+                ) {
+                    OutlinedTextField(
+                        value = time,
+                        onValueChange = {},
+                        label = { Text("Reminder Time") },
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledBorderColor = primaryGreen,
+                            disabledTextColor = textGreen,
+                            disabledLabelColor = darkGreen,
+                            disabledPlaceholderColor = darkGreen
                         )
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        val parts = time.split(":")
+                        val hour = parts.getOrNull(0)?.toIntOrNull()
+                        val minute = parts.getOrNull(1)?.toIntOrNull()
+
+                        if (hour != null && minute != null) {
+                            val reminderMessage = if (message.isBlank()) "Time to exercise!" else message
+
+                            coroutineScope.launch {
+                                val reminder = ReminderEntity(
+                                    id = 0,
+                                    message = reminderMessage,
+                                    time = time
+                                )
+
+                                val insertedId = dao.insertReminder(reminder).toInt()
+                                scheduleReminder(context, reminderMessage, hour, minute, insertedId)
+                                confirmed = true
+
+                                // ✅ Очистити поля після збереження
+                                message = ""
+                                time = ""
+                            }
+                        }
+                    },
+                    enabled = time.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = primaryGreen,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Set Reminder")
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "Your Reminders:",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = darkGreen
+                )
+
+                reminders.forEach { reminder ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("${reminder.time} - ${reminder.message}", color = textGreen)
+
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    dao.deleteReminder(reminder)
+                                    cancelScheduledReminder(context, reminder.id)
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Reminder",
+                                tint = Color(0xFFD32F2F) // Red for delete
+                            )
+                        }
                     }
                 }
             }
         }
     }
+
 
 
 
